@@ -1,36 +1,24 @@
 import React, { useState, useRef } from 'react';
-import { Upload, FileText, CheckCircle, Monitor, Smartphone, Download } from 'lucide-react';
+import { Upload, CheckCircle, Monitor, Smartphone } from 'lucide-react';
 
 export default function WordToPdfConverter() {
     const [dragOver, setDragOver] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState([]);
+    const [pdfMode, setPdfMode] = useState("standard"); // ✅ add this
     const fileInputRef = useRef(null);
 
-    const handleDragOver = (e) => {
-        e.preventDefault();
-        setDragOver(true);
-    };
-
-    const handleDragLeave = (e) => {
-        e.preventDefault();
-        setDragOver(false);
-    };
-
+    const handleDragOver = (e) => { e.preventDefault(); setDragOver(true); };
+    const handleDragLeave = (e) => { e.preventDefault(); setDragOver(false); };
     const handleDrop = (e) => {
-        e.preventDefault();
-        setDragOver(false);
+        e.preventDefault(); setDragOver(false);
         const files = Array.from(e.dataTransfer.files);
         setSelectedFiles(files);
     };
-
     const handleFileSelect = (e) => {
         const files = Array.from(e.target.files);
         setSelectedFiles(files);
     };
-
-    const handleChooseFiles = () => {
-        fileInputRef.current?.click();
-    };
+    const handleChooseFiles = () => { fileInputRef.current?.click(); };
 
     return (
         <div className="min-h-screen bg-gray-50 p-4">
@@ -44,14 +32,13 @@ export default function WordToPdfConverter() {
                 <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
                     <div
                         className={`border-2 border-dashed rounded-lg p-16 text-center transition-all duration-300 ${dragOver
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-blue-300 bg-gradient-to-br from-blue-500 to-blue-600'
+                                ? 'border-blue-500 bg-blue-50'
+                                : 'border-blue-300 bg-gradient-to-br from-blue-500 to-blue-600'
                             }`}
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
                         onDrop={handleDrop}
                     >
-
                         {/* Choose Files Button */}
                         <div className="mb-4">
                             <button
@@ -124,9 +111,39 @@ export default function WordToPdfConverter() {
                     </div>
                 </div>
 
-                {/* Convert Button */}
+                {/* Radios + Convert Button (only when files selected) */}
                 {selectedFiles.length > 0 && (
                     <div className="text-center mt-8">
+                        <fieldset className="inline-flex items-center gap-6 mb-4 bg-white rounded-xl px-5 py-3 shadow">
+                            <legend className="sr-only">PDF Mode</legend>
+
+                            <span className="text-sm font-medium text-gray-700">PDF mode:</span>
+
+                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="pdfMode"
+                                    value="standard"
+                                    checked={pdfMode === "standard"}
+                                    onChange={(e) => setPdfMode(e.target.value)}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                />
+                                <span className="text-sm text-gray-700">Standard</span>
+                            </label>
+
+                            <label className="inline-flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="radio"
+                                    name="pdfMode"
+                                    value="high"
+                                    checked={pdfMode === "high"}
+                                    onChange={(e) => setPdfMode(e.target.value)}
+                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+                                />
+                                <span className="text-sm text-gray-700">High quality</span>
+                            </label>
+                        </fieldset>
+
                         <button className="bg-blue-600 text-white px-12 py-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors duration-200 shadow-lg">
                             Convert to PDF
                         </button>
