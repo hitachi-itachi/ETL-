@@ -1,10 +1,18 @@
 import React, { useState, useRef } from 'react';
 import { Upload, CheckCircle, Monitor, Smartphone } from 'lucide-react';
+/**import function from dataCleanerController.js */
+import {
+    parseFileToRows,
+    removeDuplicates,
+    downloadRowsAsXLSX,
+} from "../controllers/dataCleanerController";
 
 export default function WordToPdfConverter() {
     const [dragOver, setDragOver] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState([]);
-    const [pdfMode, setPdfMode] = useState("standard"); // ✅ add this
+    const [rows, setRows] = useState([]);
+    const [columns, setColumns] = useState([]);
+    const [mode, setMode] = useState("dedupe"); // ✅ add this
     const fileInputRef = useRef(null);
 
     const handleDragOver = (e) => { e.preventDefault(); setDragOver(true); };
@@ -32,8 +40,8 @@ export default function WordToPdfConverter() {
                 <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
                     <div
                         className={`border-2 border-dashed rounded-lg p-16 text-center transition-all duration-300 ${dragOver
-                                ? 'border-blue-500 bg-blue-50'
-                                : 'border-blue-300 bg-gradient-to-br from-blue-500 to-blue-600'
+                            ? 'border-blue-500 bg-blue-50'
+                            : 'border-blue-300 bg-gradient-to-br from-blue-500 to-blue-600'
                             }`}
                         onDragOver={handleDragOver}
                         onDragLeave={handleDragLeave}
@@ -52,7 +60,7 @@ export default function WordToPdfConverter() {
                                 ref={fileInputRef}
                                 type="file"
                                 multiple
-                                accept=".doc,.docx"
+                                accept=".xlsx,.csv,.xls"
                                 onChange={handleFileSelect}
                                 className="hidden"
                             />
@@ -80,7 +88,7 @@ export default function WordToPdfConverter() {
                     {/* Left Column - Description */}
                     <div>
                         <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                            Effortlessly convert Word documents to PDF files for free, without watermarks or the need to sign up.
+                            Effortlessly clean data by uploading a CSV/Excel file.
                         </p>
                     </div>
 
@@ -93,7 +101,7 @@ export default function WordToPdfConverter() {
 
                         <div className="flex items-center space-x-3">
                             <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                            <span className="text-gray-700">Easy-to-use online Word to PDF converter</span>
+                            <span className="text-gray-700">Easy-to-use data cleaner</span>
                         </div>
 
                         <div className="flex items-center space-x-3">
@@ -123,29 +131,29 @@ export default function WordToPdfConverter() {
                                 <input
                                     type="radio"
                                     name="pdfMode"
-                                    value="standard"
+                                    value="Standardize"
                                     checked={pdfMode === "standard"}
                                     onChange={(e) => setPdfMode(e.target.value)}
                                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                                 />
-                                <span className="text-sm text-gray-700">Standard</span>
+                                <span className="text-sm text-gray-700">Remove Duplicate</span>
                             </label>
 
                             <label className="inline-flex items-center gap-2 cursor-pointer">
                                 <input
                                     type="radio"
-                                    name="pdfMode"
+                                    name="duplicateMode"
                                     value="high"
                                     checked={pdfMode === "high"}
                                     onChange={(e) => setPdfMode(e.target.value)}
                                     className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
                                 />
-                                <span className="text-sm text-gray-700">High quality</span>
+                                <span className="text-sm text-gray-700">Standardize</span>
                             </label>
                         </fieldset>
 
                         <button className="bg-blue-600 text-white px-12 py-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors duration-200 shadow-lg">
-                            Convert to PDF
+                            Clean
                         </button>
                     </div>
                 )}
