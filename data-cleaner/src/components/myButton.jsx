@@ -1,160 +1,102 @@
-import React, { useState, useRef } from 'react';
-import { Upload, CheckCircle, Monitor, Smartphone } from 'lucide-react';
-/**import function from dataCleanerController.js */
-import {
-    parseFileToRows,
-    removeDuplicates,
-    downloadRowsAsXLSX,
-} from "../controllers/dataCleanerController";
+import React, { useState, useRef } from "react";
+import { Upload } from "lucide-react";
+import { parseFileToRows, downloadRowsAsXLSX, dedupeAll } from "../controllers/dataCleanerController";
 
-export default function WordToPdfConverter() {
-    const [dragOver, setDragOver] = useState(false);
+export default function DataCleaner() {
+    const [rows, setRows] = useState([]);           // AOA
     const [selectedFiles, setSelectedFiles] = useState([]);
-    const [rows, setRows] = useState([]);
-    const [columns, setColumns] = useState([]);
-    const [mode, setMode] = useState("dedupe"); // ✅ add this
     const fileInputRef = useRef(null);
 
-    const handleDragOver = (e) => { e.preventDefault(); setDragOver(true); };
-    const handleDragLeave = (e) => { e.preventDefault(); setDragOver(false); };
-    const handleDrop = (e) => {
-        e.preventDefault(); setDragOver(false);
-        const files = Array.from(e.dataTransfer.files);
-        setSelectedFiles(files);
-    };
-    const handleFileSelect = (e) => {
-        const files = Array.from(e.target.files);
-        setSelectedFiles(files);
-    };
-    const handleChooseFiles = () => { fileInputRef.current?.click(); };
+    const handleChooseFiles = () => fileInputRef.current?.click();
 
+    async function handleFiles(files) {
+        setSelectedFiles(files);
+        if (!files.length) return;
+        const aoa = await parseFileToRows(files[0]);
+        setRows(aoa);
+    }
+
+    const handleDrop = async (e) => {
+        e.preventDefault();
+        await handleFiles(Array.from(e.dataTransfer.files));
+    };
+
+    const handleFileSelect = async (e) => {
+        await handleFiles(Array.from(e.target.files));
+    };
+
+    function handleClean() {
+        if (!rows.length || !selectedFiles.length) return;
+        const base = (selectedFiles[0].name || "data").replace(/\.(xlsx|xls|csv)$/i, "");
+
+        // 👉 Dedup by a specific column (recommended):
+        // e.g. email-only; change to [] if you truly want all columns
+        const out = dedupeAll(rows, ["email"], { caseInsensitive: true });
+
+        console.log(`Before: ${rows.length}  After: ${out.length}`);
+        downloadRowsAsXLSX(out, `${base}_deduped_by_email.xlsx`);
+    }
     return (
-        <div className="min-h-screen bg-gray-50 p-4">
-            <div className="max-w-6xl mx-auto">
-                {/* Header */}
-                <h1 className="text-4xl font-bold text-gray-800 text-center mb-8">
+        <div className="min-h-screen bg-gray-50 p-6">
+            <div className="max-w-5xl mx-auto">
+                <h1 className="text-3xl md:text-4xl font-bold text-gray-800 text-center mb-8">
                     Data Cleaning tool
                 </h1>
 
-                {/* Main Upload Area */}
-                <div className="bg-white rounded-lg shadow-lg p-8 mb-8">
+                {/* Upload card */}
+                <div className="bg-white rounded-xl shadow-lg p-8">
                     <div
-                        className={`border-2 border-dashed rounded-lg p-16 text-center transition-all duration-300 ${dragOver
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-blue-300 bg-gradient-to-br from-blue-500 to-blue-600'
-                            }`}
-                        onDragOver={handleDragOver}
-                        onDragLeave={handleDragLeave}
+                        className="border-2 border-dashed border-blue-300 rounded-xl p-12 text-center bg-gradient-to-br from-blue-500 to-blue-600"
                         onDrop={handleDrop}
+                        onDragOver={(e) => e.preventDefault()}
                     >
-                        {/* Choose Files Button */}
-                        <div className="mb-4">
-                            <button
-                                onClick={handleChooseFiles}
-                                className="bg-white text-gray-700 px-8 py-3 rounded-lg font-semibold hover:bg-gray-50 transition-colors duration-200 shadow-md flex items-center justify-center mx-auto"
-                            >
-                                <Upload className="w-5 h-5 mr-2" />
-                                CHOOSE FILES
-                            </button>
-                            <input
-                                ref={fileInputRef}
-                                type="file"
-                                multiple
-                                accept=".xlsx,.csv,.xls"
-                                onChange={handleFileSelect}
-                                className="hidden"
-                            />
-                        </div>
+                        <button
+                            onClick={handleChooseFiles}
+                            className="bg-white text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 transition shadow-md inline-flex items-center"
+                        >
+                            <Upload className="w-5 h-5 mr-2" />
+                            CHOOSE FILES
+                        </button>
+                        <p className="mt-3 text-white/90">or drop files here</p>
 
-                        {/* Drop Text */}
-                        <p className="text-white text-lg">or drop files here</p>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".csv,.xlsx,.xls"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />
 
-                        {/* Selected Files Display */}
                         {selectedFiles.length > 0 && (
-                            <div className="mt-6 bg-white bg-opacity-20 rounded-lg p-4">
-                                <p className="text-black font-semibold mb-2">Selected Files:</p>
-                                {selectedFiles.map((file, index) => (
-                                    <div key={index} className="text-black text-sm">
-                                        {file.name}
-                                    </div>
-                                ))}
+                            <div className="mt-6 bg-white rounded-lg p-4 shadow-inner max-w-xl mx-auto">
+                                <p className="text-gray-800 text-sm font-semibold mb-1">Selected file:</p>
+                                <div className="text-gray-700 text-sm truncate">
+                                    {selectedFiles[0].name}
+                                </div>
                             </div>
                         )}
                     </div>
                 </div>
 
-                {/* Features Section */}
-                <div className="grid md:grid-cols-2 gap-8">
-                    {/* Left Column - Description */}
-                    <div>
-                        <p className="text-gray-600 text-lg leading-relaxed mb-6">
-                            Effortlessly clean data by uploading a CSV/Excel file.
-                        </p>
-                    </div>
-
-                    {/* Right Column - Features */}
-                    <div className="space-y-4">
-                        <div className="flex items-center space-x-3">
-                            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                            <span className="text-gray-700">Trusted by 1.7 billion users since 2013</span>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                            <span className="text-gray-700">Easy-to-use data cleaner</span>
-                        </div>
-
-                        <div className="flex items-center space-x-3">
-                            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
-                            <div className="flex items-center space-x-2">
-                                <span className="text-gray-700">Compatible with</span>
-                                <Monitor className="w-4 h-4 text-gray-500" />
-                                <span className="text-gray-700">Mac,</span>
-                                <Monitor className="w-4 h-4 text-gray-500" />
-                                <span className="text-gray-700">Windows,</span>
-                                <Smartphone className="w-4 h-4 text-gray-500" />
-                                <span className="text-gray-700">iOS, and Android</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Radios + Convert Button (only when files selected) */}
-                {selectedFiles.length > 0 && (
-                    <div className="text-center mt-8">
-                        <fieldset className="inline-flex items-center gap-6 mb-4 bg-white rounded-xl px-5 py-3 shadow">
-                            <legend className="sr-only">PDF Mode</legend>
-
-                            <span className="text-sm font-medium text-gray-700">PDF mode:</span>
-
-                            <label className="inline-flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="pdfMode"
-                                    value="Standardize"
-                                    checked={pdfMode === "standard"}
-                                    onChange={(e) => setPdfMode(e.target.value)}
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                                />
+                {/* Actions */}
+                {rows.length > 0 && (
+                    <div className="mt-6 flex flex-col items-center gap-4">
+                        <div className="inline-flex items-center gap-4 bg-white rounded-full px-5 py-3 shadow">
+                            <span className="text-sm text-gray-600">Mode:</span>
+                            <label className="inline-flex items-center gap-2">
+                                <input type="radio" name="mode" defaultChecked readOnly />
                                 <span className="text-sm text-gray-700">Remove Duplicate</span>
                             </label>
+                        </div>
 
-                            <label className="inline-flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="radio"
-                                    name="duplicateMode"
-                                    value="high"
-                                    checked={pdfMode === "high"}
-                                    onChange={(e) => setPdfMode(e.target.value)}
-                                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                                />
-                                <span className="text-sm text-gray-700">Standardize</span>
-                            </label>
-                        </fieldset>
-
-                        <button className="bg-blue-600 text-white px-12 py-4 rounded-lg font-semibold text-lg hover:bg-blue-700 transition-colors duration-200 shadow-lg">
-                            Clean
+                        <button
+                            onClick={handleClean}
+                            className="bg-blue-600 text-white px-10 py-3 rounded-lg font-semibold shadow hover:bg-blue-700"
+                        >
+                            Deduplicate & Download
                         </button>
+
+                        <p className="text-xs text-gray-500">Rows detected: {rows.length}</p>
                     </div>
                 )}
             </div>

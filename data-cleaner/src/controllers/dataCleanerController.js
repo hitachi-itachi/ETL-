@@ -1,43 +1,63 @@
 import * as XLSX from "xlsx";
+import * as dfd from "danfojs";
 
-/** Parse A CSV/Excel File -> {rows, columns} */
-export function parseFileToRows(file) {
-    return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: "array" });
-            const firstSheetName = workbook.SheetNames[0];
-            const worksheet = workbook.Sheets[firstSheetName];
-            const rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-            resolve(rows);
-        };
-        reader.onerror = (error) => reject(error);
-        reader.readAsArrayBuffer(file);
-    });
+// CSV -> readAsText, Excel -> readAsArrayBuffer
+export async function parseFileToRows(file) {
+  const isCSV = /\.csv$/i.test(file.name);
+  const data = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = e => res(e.target.result);
+    r.onerror = rej;
+    isCSV ? r.readAsText(file) : r.readAsArrayBuffer(file);
+  });
+
+  const wb = isCSV ? XLSX.read(data, { type: "string" })
+    : XLSX.read(new Uint8Array(data), { type: "array" });
+  const sheet = wb.Sheets[wb.SheetNames[0]];
+  return XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" }); // AOA
 }
 
-/** Remove duplicates by keys(all Columns if keys empty) */
-export function removeDuplicates(data, keys = []) {
-    const seen = new Set();
-    const uniqueRows = [];
-
-    data.forEach(row => {
-        const key = keys.length ? keys.map(k => row[k]).join("|") : row.join("|");
-        if (!seen.has(key)) {
-            seen.add(key);
-            uniqueRows.push(row);
-        }
-    });
-
-    return uniqueRows;
-}
-/**Download rows as XLSX(Single Sheet) */
 export function downloadRowsAsXLSX(rows, filename = "data.xlsx") {
-    const workbook = XLSX.utils.book_new();
-    const worksheet = XLSX.utils.aoa_to_sheet(rows);
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Sheet1");
-    XLSX.writeFile(workbook, filename);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "Cleaned");
+  XLSX.writeFile(wb, filename);
 }
 
+// AOA -> AOA; keyNames=[] => dedupe across ALL columns
+export function dedupeDanfo(rows, keyNames = []) {
+  if (!rows?.length) return rows;
+  const [header, ...body] = rows;
+  const df = new dfd.DataFrame(body, { columns: header });
+  const out = keyNames.length ? df.dropDuplicates({ columns: keyNames })
+    : df.dropDuplicates();
+  const aoo = out.toJSON();
+  return [header, ...aoo.map(o => header.map(h => o[h] ?? ""))];
+}
 
+// keep your parseFileToRows + downloadRowsAsXLSX as-is
+
+function norm(v, lower = true) {
+  let s = v == null ? "" : String(v);
+  s = s.replace(/\u00A0/g, " ").trim(); //basically remove whitespace
+  return lower ? s.toLowerCase() : s;
+}
+
+/** AOA -> AOA; keyNames = [] => all columns */
+export function dedupeAll(rows, keyNames = [], { caseInsensitive = true } = {}) {
+  if (!rows?.length) return rows;
+  const [header, ...body] = rows;
+
+  // map column names -> indexes
+  const idxs = keyNames.length
+    ? keyNames.map(n => header.indexOf(n)).filter(i => i >= 0)
+    : null;
+
+  const seen = new Set();
+  const out = [];
+  for (const r of body) {
+    const vals = (idxs ? idxs.map(i => r[i]) : r).map(v => norm(v, caseInsensitive));
+    const key = JSON.stringify(vals);
+    if (!seen.has(key)) { seen.add(key); out.push(r); }
+  }
+  return [header, ...out];
+}
