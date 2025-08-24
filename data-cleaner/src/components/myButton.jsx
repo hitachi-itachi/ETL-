@@ -31,7 +31,7 @@ export default function DataCleaner() {
 
         // 👉 Dedup by a specific column (recommended):
         // e.g. email-only; change to [] if you truly want all columns
-        const out = dedupeAll(rows, ["email"], { caseInsensitive: true });
+        const out = dedupeAll(rows, [], { caseInsensitive: true });
 
         console.log(`Before: ${rows.length}  After: ${out.length}`);
         downloadRowsAsXLSX(out, `${base}_deduped_by_email.xlsx`);
